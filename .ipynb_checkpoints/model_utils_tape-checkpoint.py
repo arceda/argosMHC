@@ -6,8 +6,6 @@ from torch.nn import MSELoss
 
 from tape import ProteinBertAbstractModel, ProteinBertModel
 
-from distiller import Distillator as DistillatorBert
-
 from transformers import BertModel, BertPreTrainedModel
 from transformers.modeling_outputs import SequenceClassifierOutput
 from transformers.file_utils import add_start_docstrings, add_start_docstrings_to_model_forward
@@ -89,78 +87,6 @@ class TapeRnn(ProteinBertAbstractModel):
         self.max_seq_len = config.length
 
         self.bert = ProteinBertModel(config)
-        self.rnn = nn.LSTM(input_size=self.hidden_size, hidden_size=self.rnn_hidden, bidirectional=True,
-                               num_layers=self.num_rnn_layer, batch_first=True, dropout=self.rnn_dropout)
-        
-        self.dropout = nn.Dropout(self.rnn_dropout)
-        self.classifier = nn.Linear(2*self.rnn_hidden, self.config.num_labels)
-        
-        self.init_weights()
-
-        reduction = 'mean'
-        self.criterion = nn.CrossEntropyLoss(reduction=reduction)
-    
-    def forward(
-            self,
-            input_ids=None,
-            attention_mask=None,
-            token_type_ids=None,
-            position_ids=None,
-            head_mask=None,
-            inputs_embeds=None,
-            labels=None,
-            output_attentions=None,
-            output_hidden_states=None,
-            return_dict=None,
-    ):                
-        
-        outputs = self.bert(input_ids, input_mask=attention_mask) 
-
-        sequence_output, pooled_output = outputs[:2]  
-
-        rnn_out, (ht, ct) = self.rnn(sequence_output)        
-
-        output = rnn_out.permute(0, 2, 1)
-        output = torch.nn.functional.max_pool1d(output, self.max_seq_len)
-        model_output = self.dropout(output.squeeze())
-        logits = self.classifier(model_output)   
-      
-        loss_fct = self.criterion
-        loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))  
-
-        return SequenceClassifierOutput(
-            loss=loss,
-            logits=logits,
-            hidden_states=None, # TAPE, no esta retornando los hidden states, pero si deberia https://github.com/songlab-cal/tape/blob/master/tape/models/modeling_bert.py
-            attentions=None, # TAPE, no esta retornando los attentions pero si deberia
-        )
-    
-    
-@add_start_docstrings(
-    """
-    Bert Model transformer with a sequence classification/regression head on top (a linear layer on top of the pooled
-    output) e.g. for GLUE tasks.
-    """,
-    BERT_START_DOCSTRING,
-)
-class TapeRnnDist(ProteinBertAbstractModel):
-
-    def __init__(self, config):
-        super().__init__(config)
-
-        self.num_labels = config.num_labels
-        self.rnn_type = config.rnn
-        self.num_rnn_layer = config.num_rnn_layer
-        self.hidden_size = config.hidden_size
-        self.rnn_dropout = config.rnn_dropout
-        self.rnn_hidden = config.rnn_hidden
-        self.max_seq_len = config.length
-
-        
-        protein_model_instance = ProteinBertModel.from_pretrained("bert-base", num_labels=2)
-        distilled_module_bert = DistillatorBert(protein_model_instance)
-        
-        self.bert = distilled_module_bert(config)
         self.rnn = nn.LSTM(input_size=self.hidden_size, hidden_size=self.rnn_hidden, bidirectional=True,
                                num_layers=self.num_rnn_layer, batch_first=True, dropout=self.rnn_dropout)
         

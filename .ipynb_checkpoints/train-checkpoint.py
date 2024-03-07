@@ -1,6 +1,6 @@
 from transformers import Trainer, TrainingArguments, BertConfig, AdamW
 from model_utils_bert import BertLinear, BertRnn, BertRnnAtt, BertRnnSigmoid
-from model_utils_tape import TapeLinear, TapeRnn, TapeRnnAtt, TapeRnnDist
+from model_utils_tape import TapeLinear, TapeRnn, TapeRnnAtt
 from utils import compute_metrics
 from transformers import EarlyStoppingCallback, IntervalStrategy
 
@@ -82,11 +82,6 @@ if model_type == "tape":
     trainset = DataSetLoaderTAPE(path_train_csv, max_length=max_length) 
     valset = DataSetLoaderTAPE(path_val_csv, max_length=max_length)
     config = ProteinBertConfig.from_pretrained(model_name, num_labels=2)
-
-elif model_type == "dist":
-    trainset = DataSetLoaderTAPE(path_train_csv, max_length=max_length) 
-    valset = DataSetLoaderTAPE(path_val_csv, max_length=max_length)
-    config = ProteinBertConfig.from_pretrained(model_name, num_labels=2)
     
 else: 
     trainset = DataSetLoaderBERT(path=path_train_csv, tokenizer_name=model_name, max_length=max_length)
@@ -107,8 +102,6 @@ config.cnn_dropout = 0.1
 #################################################################################
 if model_type == "tape":    
     model_ = TapeRnn.from_pretrained(model_name, config=config)
-elif model_type == "dist":
-    model_ = TapeRnnDist.from_pretrained(model_name, config=config)
 else:                       
     model_ = BertRnn.from_pretrained(model_name, config=config)
 
