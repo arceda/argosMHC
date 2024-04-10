@@ -6,5 +6,15 @@ __pycache__/*
 .ipynb_checkpoints/*
 distillation/data/*
 
+LoRA/__pycache__/*
+LoRA/.ipynb_checkpoints
+LoRA/BERT_LoRA/*
+LoRA/BERT_NoLoRA/*
+LoRA/lora_venv/*
+LoRA/lora_venv/*
 
-
+distlbertExample/__pycache__/*
+distlbertExample/.ipynb_checkpoints
+distlbertExample/bert_classifier_distilled.pth
+distlbertExample/bert_classifier2.pth
+distlbertExample/bert_classifier.pth
