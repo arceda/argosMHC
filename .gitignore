@@ -18,3 +18,5 @@ distlbertExample/.ipynb_checkpoints
 distlbertExample/bert_classifier_distilled.pth
 distlbertExample/bert_classifier2.pth
 distlbertExample/bert_classifier.pth
+gi-lfs*
+

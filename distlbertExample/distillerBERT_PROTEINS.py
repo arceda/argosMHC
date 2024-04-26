@@ -19,7 +19,7 @@ def distill_bert(
     The head of the teacher is also copied.
     """
     # Get teacher configuration as a dictionnary
-    config = ProteinBertConfig.from_pretrained("bert-base-uncased", num_labels=2)
+    config = ProteinBertConfig.from_pretrained("bert-base", num_labels=2)
     
     config.rnn = "lstm"
     config.num_rnn_layer = 2
