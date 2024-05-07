@@ -110,7 +110,8 @@ if model_type == "tape":
 elif model_type == "dist":
     model_ = TapeRnnDist.from_pretrained(model_name, config=config)
 else:                       
-    model_ = BertRnn.from_pretrained(model_name, config=config)
+    model_ = BertRnn.from_pretrained("pre_trained_models/esm2_t6_8M_UR50D", config=config)
+    #model_ = BertRnn.from_pretrained(model_name, config=config)
 
 
 # FREEZE BERT LAYERS

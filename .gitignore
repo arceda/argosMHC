@@ -19,4 +19,7 @@ distlbertExample/bert_classifier_distilled.pth
 distlbertExample/bert_classifier2.pth
 distlbertExample/bert_classifier.pth
 gi-lfs*
-
+LoRA/loravenv/*
+LoRA/test_trainer/*
+LoRA/transformers/*
+LoRA/wandb
