@@ -28,6 +28,8 @@ import argparse
 
 # Ejemplo de uso para empezar un entrenamiento
 # python train.py -t bert -c ../checkpoints_train/classic -m ../models/classic -p ../pre_trained_models/esm2_t33_650M_UR50D -r 0 
+# python train.py -t bert -c ../checkpoints_train/classic_t33_c3 -m ../models/classic_t33_c3 -p ../pre_trained_models/esm2_t6_8M_UR50D -r 0 
+# python train.py -t bert -c ../checkpoints_train/classic_t33_c3 -m ../models/classic_t33_c3 -p ../pre_trained_models/esm2_t33_650M_UR50D -r 0 
 
 # Ejemplo de uso para resumir un entrenamiento
 # python train.py -t bert -c ../checkpoints_train/classic -m ../models/classic -p ../pre_trained_models/esm2_t33_650M_UR50D -r 1 -id <wandb_id>
@@ -102,11 +104,29 @@ elif model_type == "bert":
 #for param in model_.bert.parameters():
 #    param.requires_grad = False
     
-############ hyperparameters ####################################################
-num_samples = len(trainset)
-num_epochs = 10
+############ hyperparameters ESM2 (fails) #######################################
+'''num_samples = len(trainset)
+num_epochs = 6
 batch_size = 16  # segun hlab, se obtienen mejores resutlados
-num_training_steps = num_epochs * num_samples
+
+# the same as ems2
+weight_decay = 0.01
+lr =4e-4  
+betas = ((0.9, 0.98)) 
+warmup_steps = 2000'''
+
+############ hyperparameters ####################################################
+# segun ON THE STABILITY OF FINE - TUNING BERT: MISCONCEPTIONS , EXPLANATIONS , AND STRONG BASELINES
+num_samples = len(trainset)
+num_epochs = 6
+batch_size = 16  # segun hlab, se obtienen mejores resutlados
+
+weight_decay = 0.01
+lr =2e-5
+betas = ((0.9, 0.98)) 
+num_training_steps = int((num_epochs * num_samples)/batch_size) 
+# num_epochs * num_samples = 3234114; 3234114/batch_size = 202134 (Total optimization steps)
+warmup_steps = int(num_training_steps*0.1) # 10% of total steps (202134*0.1 = 20213)
 
 training_args = TrainingArguments(
         output_dir                  = path_checkpoints, 
@@ -114,26 +134,24 @@ training_args = TrainingArguments(
         per_device_train_batch_size = batch_size,   
         per_device_eval_batch_size  = batch_size * 8,         
         logging_dir                 = path_checkpoints,        
-        logging_strategy            = "epoch", #epoch or steps
-        eval_steps                  = num_samples/batch_size, 
-        save_steps                  = num_samples/batch_size,  
+        logging_strategy            = "steps", #epoch or steps
+        #eval_steps                  = num_samples/batch_size, # para epochs
+        #save_steps                  = num_samples/batch_size, # para epochs
+        eval_steps                  = 3000, # el primer experimento fue con 1000 steps
+        save_steps                  = 3000,
         metric_for_best_model       = 'f1',
         load_best_model_at_end      = True,        
-        evaluation_strategy         = "epoch", #epoch or steps
-        save_strategy               = "epoch", #epoch or ste
-        gradient_accumulation_steps = 64,  # total number of steps before back propagation
+        evaluation_strategy         = "steps", #epoch or steps
+        save_strategy               = "steps", #epoch or ste
+        #gradient_accumulation_steps = 64,  # reduce el consumo de memoria
     
         report_to="wandb",
-        logging_steps=1000  # how often to log to W&B
+        logging_steps=3000  # how often to log to W&B
 )
 
-# the same as ems2
-weight_decay = 0.01
-lr =4e-4  
-betas = ((0.9, 0.98)) 
-warmup_steps = 2000
 
-optimizer = AdamW(model_.parameters(), lr=lr, betas=betas, weight_decay=weight_decay)
+
+optimizer = AdamW(model_.parameters(), lr=lr, betas=betas, weight_decay=weight_decay, correct_bias=True)
 lr_scheduler = get_scheduler("linear", optimizer=optimizer, num_warmup_steps=warmup_steps, num_training_steps=num_training_steps)
 
 trainer = Trainer(        
@@ -143,7 +161,7 @@ trainer = Trainer(
         eval_dataset    = valset, 
         compute_metrics = compute_metrics,  
         optimizers      = (optimizer, lr_scheduler),      
-        callbacks       = [EarlyStoppingCallback(early_stopping_patience=3)] 
+        callbacks       = [EarlyStoppingCallback(early_stopping_patience=5)] 
     )
 
 
