@@ -58,7 +58,7 @@ os.environ["WANDB_LOG_MODEL"] = "checkpoint"  # log all model checkpoints
 if not resume:
     run = wandb.init(project="argosMHC")
 else:
-    run = wandb.init(project="argosMHC", id="xxxxx", resume="must") # el id esta en la wandb
+    run = wandb.init(project="argosMHC", id=wandb_ide, resume="must") # el id esta en la wandb
 
 
 # dataset ###########################################################################3###############
