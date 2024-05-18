@@ -115,14 +115,14 @@ lr =4e-4
 betas = ((0.9, 0.98)) 
 warmup_steps = 2000'''
 
-############ hyperparameters ####################################################
+############ hyperparameters #################################################### Configuration 5
 # segun ON THE STABILITY OF FINE - TUNING BERT: MISCONCEPTIONS , EXPLANATIONS , AND STRONG BASELINES
 num_samples = len(trainset)
-num_epochs = 6
+num_epochs = 60
 batch_size = 16  # segun hlab, se obtienen mejores resutlados
 
 weight_decay = 0.01
-lr =2e-5
+lr =2e-6
 betas = ((0.9, 0.98)) 
 num_training_steps = int((num_epochs * num_samples)/batch_size) 
 # num_epochs * num_samples = 3234114; 3234114/batch_size = 202134 (Total optimization steps)
