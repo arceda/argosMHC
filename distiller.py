@@ -4,13 +4,14 @@ import torch
 from typing import Any
 from torch import Tensor
 #from transformers.models.roberta.modeling_roberta import RobertaPreTrainedModel, RobertaConfig, RobertaModel, RobertaEncoder
-from transformers import BertPreTrainedModel, BertModel
+from transformers import BertPreTrainedModel, BertModel, BertConfig
 from tape import ProteinBertConfig, ProteinBertModel
 from torch.nn import CrossEntropyLoss, CosineEmbeddingLoss, Module
 
 ## Function
 def distill_bert(
     teacher_model : Any,
+    configTeacher,
 ) -> BertPreTrainedModel:
     """
     Distilates a RoBERTa (teacher_model) like would DistilBERT for a BERT model.
@@ -19,13 +20,14 @@ def distill_bert(
     The head of the teacher is also copied.
     """
     # Get teacher configuration as a dictionnary
-    config = ProteinBertConfig.from_pretrained("bert-base", num_labels=2)
+    config = BertConfig.from_pretrained("bert-base-uncased", num_labels=configTeacher.num_labels)
     
-    config.rnn = "lstm"
-    config.num_rnn_layer = 2
-    config.rnn_dropout = 0.1
-    config.rnn_hidden = 768
-    config.length = 50
+    config.rnn = configTeacher.rnn
+    config.hidden_size = configTeacher.rnn_hidden
+    config.num_rnn_layer = configTeacher.num_rnn_layer
+    config.rnn_dropout = configTeacher.rnn_dropout
+    config.rnn_hidden = configTeacher.rnn_hidden
+    config.length = configTeacher.length
     config.cnn_filters = 512
     config.cnn_dropout = 0.1
     
@@ -33,7 +35,7 @@ def distill_bert(
     # Half the number of hidden layer
     configuration['num_hidden_layers'] //= 2
     # Convert the dictionnary to the student configuration
-    configuration = ProteinBertConfig.from_dict(configuration)
+    configuration = BertConfig.from_dict(configuration)
     # Create uninitialized student model
     student_model = type(teacher_model)(configuration)
     # Initialize the student's weights
@@ -73,14 +75,15 @@ class Distillator(Module):
 
     def __init__(self,
         teacher_model : BertPreTrainedModel,
-        temperature : float = 1.0,
+        configTeacher,
+        temperature : float = 1.0
     ) -> None:
         """
         Initiates the Distillator with the (teacher_model) to distillate from.
         """
         super(Distillator, self).__init__()
         self.teacher = teacher_model
-        self.student = distill_bert(teacher_model)
+        self.student = distill_bert(teacher_model, configTeacher)
         self.temperature = temperature
 
     @property
