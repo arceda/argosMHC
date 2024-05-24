@@ -160,7 +160,7 @@ class TapeRnnDist(ProteinBertAbstractModel):
         protein_model_instance = ProteinBertModel.from_pretrained("bert-base", num_labels=2)
         distilled_module_bert = DistillatorBert(protein_model_instance)
         
-        self.bert = distilled_module_bert(config)
+        self.bert = distilled_module_bert.student(config)
         self.rnn = nn.LSTM(input_size=self.hidden_size, hidden_size=self.rnn_hidden, bidirectional=True,
                                num_layers=self.num_rnn_layer, batch_first=True, dropout=self.rnn_dropout)
         
