@@ -12,9 +12,12 @@ from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 import numpy as np
 import os
+from peft import get_peft_config, PeftModel, PeftConfig, get_peft_model, LoraConfig, TaskType
+
 
 # data loaders
 from dataloader_bert import DataSetLoaderBERT, DataSetLoaderBERT_old
+
 #from dataloader_tape import DataSetLoaderTAPE
 
 import wandb
@@ -33,6 +36,7 @@ import argparse
 # Ejemplo de uso para resumir un entrenamiento
 # C5
 # python train_lora.py -t bert -c /notebooks/checkpoints_train/lora_t33_c5_jun1 -m /notebooks/models/lora_t33_c5_jun1 -p /notebooks/pre_trained_models/esm2_t33_650M_UR50D -r 1 -id 
+#python train_lora.py -t bert -c ../checkpoints_train/lora_t33_c3_2 -m ../models/lora_t33_c3_2 -p ../pre_trained_models/esm2_t33_650M_UR50D -r 1 -id odb128im
 
 
 parser = argparse.ArgumentParser(prog='pMHC')
@@ -69,23 +73,23 @@ max_length = 50 # for hlab dataset
 
 # model   ###########################################################################3###############
 
-#if model_type == "tape":  
-#    trainset = DataSetLoaderTAPE(path_train_csv, max_length=max_length) 
-#    valset = DataSetLoaderTAPE(path_val_csv, max_length=max_length)
-#   config = ProteinBertConfig.from_pretrained(model_name, num_labels=2)
+if model_type == "tape":  
+    trainset = DataSetLoaderTAPE(path_train_csv, max_length=max_length) 
+    valset = DataSetLoaderTAPE(path_val_csv, max_length=max_length)
+    config = ProteinBertConfig.from_pretrained(model_name, num_labels=2)
 
-#if model_type == "dist":
-#    trainset = DataSetLoaderTAPE(path_train_csv, max_length=max_length) 
-#    valset = DataSetLoaderTAPE(path_val_csv, max_length=max_length)
-#    config = ProteinBertConfig.from_pretrained(model_name, num_labels=2)
+if model_type == "dist":
+    trainset = DataSetLoaderTAPE(path_train_csv, max_length=max_length) 
+    valset = DataSetLoaderTAPE(path_val_csv, max_length=max_length)
+    config = ProteinBertConfig.from_pretrained(model_name, num_labels=2)
     
 if model_type == "bert": 
     trainset = DataSetLoaderBERT(path=path_train_csv, tokenizer_name=model_name, max_length=max_length)
     valset = DataSetLoaderBERT(path=path_val_csv, tokenizer_name=model_name, max_length=max_length)    
     config = BertConfig.from_pretrained(model_name, num_labels=2)
+   
 
 
-    
 config.rnn = "lstm"
 config.num_rnn_layer = 2
 config.rnn_dropout = 0.1
@@ -94,57 +98,47 @@ config.length = max_length
 config.cnn_filters = 512
 config.cnn_dropout = 0.1
 
-#if model_type == "tape":    
-#    model_ = TapeRnn.from_pretrained(model_name, config=config)
-#elif model_type == "dist":
-#    model_ = TapeRnnDist.from_pretrained(model_name, config=config)
+if model_type == "tape":    
+    model_ = TapeRnn.from_pretrained(model_name, config=config)
+elif model_type == "dist":
+    model_ = TapeRnnDist.from_pretrained(model_name, config=config)
 if model_type == "bert":                       
     model_ = BertRnn.from_pretrained(model_name, config=config)
 
 ###### KURT ######
 
-import os
-import wandb
-import numpy as np
-import torch
-import torch.nn as nn
-from datetime import datetime
-from sklearn.model_selection import train_test_split
-from sklearn.utils.class_weight import compute_class_weight
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc_auc_score, matthews_corrcoef
-from transformers import AutoModelForTokenClassification, AutoTokenizer, DataCollatorForTokenClassification, TrainingArguments, Trainer
-from datasets import Dataset
-from accelerate import Accelerator
-from peft import get_peft_config, PeftModel, PeftConfig, get_peft_model, LoraConfig, TaskType
-import pickle
+#import os
+#import wandb
+#import numpy as np
+#import torch
+#import torch.nn as nn
+#from datetime import datetime
+#from sklearn.model_selection import train_test_split
+#from sklearn.utils.class_weight import compute_class_weight
+#from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc_auc_score, matthews_corrcoef
+#from transformers import AutoModelForTokenClassification, AutoTokenizer, DataCollatorForTokenClassification, TrainingArguments, Trainer
+#from datasets import Dataset
+#from accelerate import Accelerator
+#from peft import get_peft_config, PeftModel, PeftConfig, get_peft_model, LoraConfig, TaskType
+#import pickle
 
-accelerator = Accelerator()
+#accelerator = Accelerator()
 
 ############ hyperparameters #################################################### Configuration 3
 # segun ON THE STABILITY OF FINE - TUNING BERT: MISCONCEPTIONS , EXPLANATIONS , AND STRONG BASELINES
 num_samples = len(trainset)
-num_epochs = 60  # ***
-batch_size = 16  
+num_epochs = 6
+batch_size = 16  # segun hlab, se obtienen mejores resutlados
 
 weight_decay = 0.01
-lr =2e-6  # ***
+lr =2e-5
 betas = ((0.9, 0.98)) 
-num_training_steps = int((num_epochs * num_samples)/batch_size)
+num_training_steps = int((num_epochs * num_samples)/batch_size) 
+# num_epochs * num_samples = 3234114; 3234114/batch_size = 202134 (Total optimization steps)
 warmup_steps = int(num_training_steps*0.1)
 
-configLora = {
-    "lora_alpha": 1, 
-    "lora_dropout": 0.4,
-    #"lr": lr,
-    #"lr_scheduler_type": "cosine",
-    #"max_grad_norm": 0.5,
-    #"num_train_epochs": num_epochs,
-    #"per_device_train_batch_size": batch_size,
-    "r": 1,
-    #"weight_decay": weight_decay,
-    # Add other hyperparameters as needed
-}
-
+# LoRA config ####################################################################
+configLora = { "lora_alpha": 1, "lora_dropout": 0.4, "r": 1 }
 peft_config = LoraConfig(
     task_type=TaskType.TOKEN_CLS, 
     inference_mode=False, 
@@ -155,11 +149,11 @@ peft_config = LoraConfig(
     bias="none" # or "all" or "lora_only" 
 )
 
-
 model_ = get_peft_model(model_, peft_config)
-model_ = accelerator.prepare(model_)
+#model_ = accelerator.prepare(model_)
+model_.print_trainable_parameters()
 
-
+# trainable params: 256,514 || all params: 679,378,692 || trainable%: 0.0378
 
 # FREEZE BERT LAYERS ############################################################
 #for param in model_.bert.parameters():
@@ -219,6 +213,7 @@ else:
     trainer.train(resume_from_checkpoint = True)
 
 trainer.save_model(path_model)
+trainer.model.config.save_pretrained(path_model)
 wandb.finish()
 
 

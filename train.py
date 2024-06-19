@@ -31,6 +31,9 @@ import argparse
 # python train.py -t bert -c ../checkpoints_train/classic_t33_c3 -m ../models/classic_t33_c3 -p ../pre_trained_models/esm2_t6_8M_UR50D -r 0 
 # python train.py -t bert -c ../checkpoints_train/classic_t33_c3 -m ../models/classic_t33_c3 -p ../pre_trained_models/esm2_t33_650M_UR50D -r 0 
 
+# t6
+# python train.py -t bert -c /M2/ArgosMHC_models/checkpoints/classic_t6_c3 -m /M2/ArgosMHC_models/models/classic_t6_c3 -p /M2/ArgosMHC_models/pre_trained_models/esm2_t6_8M_UR50D -r 0 
+
 # Ejemplo de uso para resumir un entrenamiento
 # python train.py -t bert -c ../checkpoints_train/classic -m ../models/classic -p ../pre_trained_models/esm2_t33_650M_UR50D -r 1 -id <wandb_id>
 
@@ -62,8 +65,11 @@ else:
 
 
 # dataset ###########################################################################3###############
-path_train_csv = "../datasets/hlab/hlab_train.csv"
-path_val_csv = "../datasets/hlab/hlab_val.csv"
+#path_train_csv = "../datasets/hlab/hlab_train.csv"
+#path_val_csv = "../datasets/hlab/hlab_val.csv"
+path_train_csv = "/M2/ArgosMHC_models/dataset/hlab/hlab_train.csv"
+path_val_csv = "/M2/ArgosMHC_models/dataset/hlab/hlab_val.csv"
+
 max_length = 50 # for hlab dataset
 #max_length = 73 # for netpanmhcii3.2 dataset La longitus del mhc es 34 => 34 + 37 + 2= 73  
 
@@ -115,18 +121,18 @@ lr =4e-4
 betas = ((0.9, 0.98)) 
 warmup_steps = 2000'''
 
-############ hyperparameters #################################################### Configuration 5
+############ hyperparameters #################################################### Configuration 3
 # segun ON THE STABILITY OF FINE - TUNING BERT: MISCONCEPTIONS , EXPLANATIONS , AND STRONG BASELINES
 num_samples = len(trainset)
-num_epochs = 60
+num_epochs = 6
 batch_size = 16  # segun hlab, se obtienen mejores resutlados
 
 weight_decay = 0.01
-lr =2e-6
+lr =2e-5
 betas = ((0.9, 0.98)) 
 num_training_steps = int((num_epochs * num_samples)/batch_size) 
 # num_epochs * num_samples = 3234114; 3234114/batch_size = 202134 (Total optimization steps)
-warmup_steps = int(num_training_steps*0.1) # 10% of total steps (202134*0.1 = 20213)
+warmup_steps = int(num_training_steps*0.1)
 
 training_args = TrainingArguments(
         output_dir                  = path_checkpoints, 
@@ -171,6 +177,7 @@ else:
     trainer.train(resume_from_checkpoint = True)
 
 trainer.save_model(path_model)
+trainer.model.config.save_pretrained(path_model)
 wandb.finish()
 
 

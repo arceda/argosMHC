@@ -263,6 +263,12 @@ class BertRnn(BertPreTrainedModel):
     ):
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
+        # evalauting input
+        #print(input_ids) #     tensor 2D
+        #print(attention_mask)
+        #print(token_type_ids)
+        #print(position_ids)
+
         batch_size = input_ids.shape[0]
         token_type_ids = None
 

@@ -1,8 +1,13 @@
 from sklearn.metrics import accuracy_score, confusion_matrix, matthews_corrcoef, roc_auc_score
 
+# queda pendiente verificar el calculo correcto del AUC, para esto se necesita la probalidades
+
 def compute_metrics(pred):
     labels = pred.label_ids
     prediction=pred.predictions
+
+    print(labels, prediction)
+
     preds = prediction.argmax(-1)
     tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
     precision = tp / (tp + fp) 
