@@ -105,29 +105,10 @@ elif model_type == "dist":
 if model_type == "bert":                       
     model_ = BertRnn.from_pretrained(model_name, config=config)
 
-###### KURT ######
 
-#import os
-#import wandb
-#import numpy as np
-#import torch
-#import torch.nn as nn
-#from datetime import datetime
-#from sklearn.model_selection import train_test_split
-#from sklearn.utils.class_weight import compute_class_weight
-#from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc_auc_score, matthews_corrcoef
-#from transformers import AutoModelForTokenClassification, AutoTokenizer, DataCollatorForTokenClassification, TrainingArguments, Trainer
-#from datasets import Dataset
-#from accelerate import Accelerator
-#from peft import get_peft_config, PeftModel, PeftConfig, get_peft_model, LoraConfig, TaskType
-#import pickle
-
-#accelerator = Accelerator()
-
-############ hyperparameters #################################################### Configuration 3
-# segun ON THE STABILITY OF FINE - TUNING BERT: MISCONCEPTIONS , EXPLANATIONS , AND STRONG BASELINES
+############ hyperparameters #################################################### Configuration 3.1
 num_samples = len(trainset)
-num_epochs = 6
+num_epochs = 20
 batch_size = 16  # segun hlab, se obtienen mejores resutlados
 
 weight_decay = 0.01
@@ -135,7 +116,7 @@ lr =2e-5
 betas = ((0.9, 0.98)) 
 num_training_steps = int((num_epochs * num_samples)/batch_size) 
 # num_epochs * num_samples = 3234114; 3234114/batch_size = 202134 (Total optimization steps)
-warmup_steps = int(num_training_steps*0.1)
+warmup_steps = 20200  # 10% of total training steps
 
 # LoRA config ####################################################################
 configLora = { "lora_alpha": 1, "lora_dropout": 0.4, "r": 1 }
@@ -159,16 +140,6 @@ model_.print_trainable_parameters()
 #for param in model_.bert.parameters():
 #    param.requires_grad = False
     
-############ hyperparameters ESM2 (fails) #######################################
-'''num_samples = len(trainset)
-num_epochs = 6
-batch_size = 16  # segun hlab, se obtienen mejores resutlados
-
-# the same as ems2
-weight_decay = 0.01
-lr =4e-4  
-betas = ((0.9, 0.98)) 
-warmup_steps = 2000'''
 
 training_args = TrainingArguments(
         output_dir                  = path_checkpoints, 
@@ -179,8 +150,8 @@ training_args = TrainingArguments(
         logging_strategy            = "steps", #epoch or steps
         #eval_steps                  = num_samples/batch_size, # para epochs
         #save_steps                  = num_samples/batch_size, # para epochs
-        eval_steps                  = 3000, # el primer experimento fue con 1000 steps
-        save_steps                  = 3000,
+        eval_steps                  = 10000, # 3000 antes
+        save_steps                  = 10000, # 3000 antes
         metric_for_best_model       = 'f1',
         load_best_model_at_end      = True,        
         evaluation_strategy         = "steps", #epoch or steps
