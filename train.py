@@ -1,5 +1,5 @@
 from transformers import Trainer, TrainingArguments, BertConfig, AdamW
-from model_utils_bert import BertLinear, BertRnn, BertRnnAtt, BertRnnSigmoid
+from model_utils_bert import BertLinear, BertRnn, BertRnnAtt, BertRnnSigmoid, BertRnnDist
 from model_utils_tape import TapeLinear, TapeRnn, TapeRnnAtt, TapeRnnDist
 from utils import compute_metrics
 from transformers import EarlyStoppingCallback, IntervalStrategy
@@ -30,12 +30,24 @@ import argparse
 # python train.py -t bert -c ../checkpoints_train/classic -m ../models/classic -p ../pre_trained_models/esm2_t33_650M_UR50D -r 0 
 # python train.py -t bert -c ../checkpoints_train/classic_t33_c3 -m ../models/classic_t33_c3 -p ../pre_trained_models/esm2_t6_8M_UR50D -r 0 
 # python train.py -t bert -c ../checkpoints_train/classic_t33_c3 -m ../models/classic_t33_c3 -p ../pre_trained_models/esm2_t33_650M_UR50D -r 0 
-
-# t6
-# python train.py -t bert -c /M2/ArgosMHC_models/checkpoints/classic_t6_c3 -m /M2/ArgosMHC_models/models/classic_t6_c3 -p /M2/ArgosMHC_models/pre_trained_models/esm2_t6_8M_UR50D -r 0 
+# python train.py -t dist -c ../checkpoints_train/esm2_distilbert_t33_c3 -m ../models/esm2_distilbert_t33_c3 -p ../pre_trained_models/esm2_t33_650M_UR50D -r 0
+# python train.py -t dist -c ../checkpoints_train/esm2_distilbert_t33_c4 -m ../models/esm2_distilbert_t33_c4 -p ../pre_trained_models/esm2_t33_650M_UR50D -r 0
+# python train.py -t dist -c ../checkpoints_train/esm2_distilbert_t33_c5 -m ../models/esm2_distilbert_t33_c5 -p ../pre_trained_models/esm2_t33_650M_UR50D -r 0
+# python train.py -t mamba -c ../checkpoints_train/mamba -m ../models/mamba -p ../pre_trained_models/esm2_t33_650M_UR50D -r 0 
 
 # Ejemplo de uso para resumir un entrenamiento
 # python train.py -t bert -c ../checkpoints_train/classic -m ../models/classic -p ../pre_trained_models/esm2_t33_650M_UR50D -r 1 -id <wandb_id>
+
+# freeze
+#python train.py -t bert -c ../checkpoints_train/esm2_t33_fz_c3 -m ../models/esm2_t33_fz_c3 -p ../pre_trained_models/esm2_t33_650M_UR50D -r 0 
+#python train.py -t bert -c ../checkpoints_train/esm2_t33_fz_c3 -m ../models/esm2_t33_fz_c3 -p ../pre_trained_models/esm2_t33_650M_UR50D -r 1 -id po1o9ddn
+
+# prot-bert-bfd
+#python train.py -t bert -c ../checkpoints_train/prot_bert_bfd_c5 -m ../models/prot_bert_bfd_c5 -p ../pre_trained_models/prot_bert_bfd -r 0 
+#python train.py -t bert -c ../checkpoints_train/prot_bert_bfd_c5 -m ../models/prot_bert_bfd_c5 -p ../pre_trained_models/prot_bert_bfd -r 1 -id bznk10f8
+
+# protbert-bfd-fz
+#python train.py -t bert -c ../checkpoints_train/prot_bert_bfd_c5_fz -m ../models/prot_bert_bfd_c5_fz -p ../pre_trained_models/prot_bert_bfd -r 1 -id 0uua2u5k
 
 
 parser = argparse.ArgumentParser(prog='pMHC')
@@ -65,11 +77,8 @@ else:
 
 
 # dataset ###########################################################################3###############
-#path_train_csv = "../datasets/hlab/hlab_train.csv"
-#path_val_csv = "../datasets/hlab/hlab_val.csv"
-path_train_csv = "/M2/ArgosMHC_models/dataset/hlab/hlab_train.csv"
-path_val_csv = "/M2/ArgosMHC_models/dataset/hlab/hlab_val.csv"
-
+path_train_csv = "../datasets/hlab/hlab_train.csv"
+path_val_csv = "../datasets/hlab/hlab_val.csv"
 max_length = 50 # for hlab dataset
 #max_length = 73 # for netpanmhcii3.2 dataset La longitus del mhc es 34 => 34 + 37 + 2= 73  
 
@@ -81,11 +90,16 @@ if model_type == "tape":
     config = ProteinBertConfig.from_pretrained(model_name, num_labels=2)
 
 elif model_type == "dist":
-    trainset = DataSetLoaderTAPE(path_train_csv, max_length=max_length) 
-    valset = DataSetLoaderTAPE(path_val_csv, max_length=max_length)
-    config = ProteinBertConfig.from_pretrained(model_name, num_labels=2)
+    trainset = DataSetLoaderBERT(path=path_train_csv, tokenizer_name=model_name, max_length=max_length)
+    valset = DataSetLoaderBERT(path=path_val_csv, tokenizer_name=model_name, max_length=max_length)    
+    config = BertConfig.from_pretrained(model_name, num_labels=2)
     
 elif model_type == "bert": 
+    trainset = DataSetLoaderBERT(path=path_train_csv, tokenizer_name=model_name, max_length=max_length)
+    valset = DataSetLoaderBERT(path=path_val_csv, tokenizer_name=model_name, max_length=max_length)    
+    config = BertConfig.from_pretrained(model_name, num_labels=2)
+
+elif model_type == "mamba": 
     trainset = DataSetLoaderBERT(path=path_train_csv, tokenizer_name=model_name, max_length=max_length)
     valset = DataSetLoaderBERT(path=path_val_csv, tokenizer_name=model_name, max_length=max_length)    
     config = BertConfig.from_pretrained(model_name, num_labels=2)
@@ -101,50 +115,41 @@ config.cnn_dropout = 0.1
 if model_type == "tape":    
     model_ = TapeRnn.from_pretrained(model_name, config=config)
 elif model_type == "dist":
-    model_ = TapeRnnDist.from_pretrained(model_name, config=config)
+    model_ = BertRnnDist.from_pretrained(model_name, config=config)
 elif model_type == "bert":                       
     model_ = BertRnn.from_pretrained(model_name, config=config)
+elif model_type == "mamba":                       
+    model_ = BertRnnMamba.from_pretrained(model_name, config=config)
 
 
 # FREEZE BERT LAYERS ############################################################
-#for param in model_.bert.parameters():
-#    param.requires_grad = False
+for param in model_.bert.parameters():
+    param.requires_grad = False
     
-############ hyperparameters ESM2 (fails) #######################################
-'''num_samples = len(trainset)
-num_epochs = 6
-batch_size = 16  # segun hlab, se obtienen mejores resutlados
-
-# the same as ems2
-weight_decay = 0.01
-lr =4e-4  
-betas = ((0.9, 0.98)) 
-warmup_steps = 2000'''
-
-############ hyperparameters #################################################### Configuration 3
-# segun ON THE STABILITY OF FINE - TUNING BERT: MISCONCEPTIONS , EXPLANATIONS , AND STRONG BASELINES
+############ hyperparameters ESM2 (fails) ####################################### c5
 num_samples = len(trainset)
-num_epochs = 6
-batch_size = 16  # segun hlab, se obtienen mejores resutlados
+num_epochs = 60 # ***
+batch_size = 16  
 
 weight_decay = 0.01
-lr =2e-5
+lr =2e-6 # ***
 betas = ((0.9, 0.98)) 
 num_training_steps = int((num_epochs * num_samples)/batch_size) 
-# num_epochs * num_samples = 3234114; 3234114/batch_size = 202134 (Total optimization steps)
-warmup_steps = int(num_training_steps*0.1)
+# warmup_steps = int(num_training_steps*0.1) # before
+warmup_steps = 202132 # now
+
 
 training_args = TrainingArguments(
         output_dir                  = path_checkpoints, 
         num_train_epochs            = num_epochs,   
         per_device_train_batch_size = batch_size,   
-        per_device_eval_batch_size  = batch_size * 8,         
+        per_device_eval_batch_size  = batch_size * 32,         
         logging_dir                 = path_checkpoints,        
         logging_strategy            = "steps", #epoch or steps
         #eval_steps                  = num_samples/batch_size, # para epochs
         #save_steps                  = num_samples/batch_size, # para epochs
-        eval_steps                  = 3000, # el primer experimento fue con 1000 steps
-        save_steps                  = 3000,
+        eval_steps                  = 20000, # el primer experimento fue con 1000 steps
+        save_steps                  = 20000,
         metric_for_best_model       = 'f1',
         load_best_model_at_end      = True,        
         evaluation_strategy         = "steps", #epoch or steps
@@ -152,7 +157,7 @@ training_args = TrainingArguments(
         #gradient_accumulation_steps = 64,  # reduce el consumo de memoria
     
         report_to="wandb",
-        logging_steps=3000  # how often to log to W&B
+        logging_steps=20000  # how often to log to W&B
 )
 
 
@@ -177,7 +182,6 @@ else:
     trainer.train(resume_from_checkpoint = True)
 
 trainer.save_model(path_model)
-trainer.model.config.save_pretrained(path_model)
 wandb.finish()
 
 

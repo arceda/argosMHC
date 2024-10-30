@@ -36,7 +36,9 @@ import argparse
 # Ejemplo de uso para resumir un entrenamiento
 # C5
 # python train_lora.py -t bert -c /notebooks/checkpoints_train/lora_t33_c5_jun1 -m /notebooks/models/lora_t33_c5_jun1 -p /notebooks/pre_trained_models/esm2_t33_650M_UR50D -r 1 -id 
-#python train_lora.py -t bert -c ../checkpoints_train/lora_t33_c3_2 -m ../models/lora_t33_c3_2 -p ../pre_trained_models/esm2_t33_650M_UR50D -r 1 -id odb128im
+#python train_lora.py -t bert -c ../checkpoints_train/lora_t33_c3.1 -m ../models/lora_t33_c3.1 -p ../pre_trained_models/esm2_t33_650M_UR50D -r 1 -id gdcdmn3d
+#python train_lora.py -t bert -c ../checkpoints_train/lora_t33_c4 -m ../models/lora_t33_c4 -p ../pre_trained_models/esm2_t33_650M_UR50D -r 1 -id y725v892
+#python train_lora.py -t bert -c ../checkpoints_train/lora_t33_c5 -m ../models/lora_t33_c5 -p ../pre_trained_models/esm2_t33_650M_UR50D -r 1 -id jzxt25ku
 
 
 parser = argparse.ArgumentParser(prog='pMHC')
@@ -106,17 +108,17 @@ if model_type == "bert":
     model_ = BertRnn.from_pretrained(model_name, config=config)
 
 
-############ hyperparameters #################################################### Configuration 3.1
+############ hyperparameters #################################################### Configuration 5
 num_samples = len(trainset)
-num_epochs = 20
-batch_size = 16  # segun hlab, se obtienen mejores resutlados
+num_epochs = 60 # ***
+batch_size = 16  
 
 weight_decay = 0.01
-lr =2e-5
+lr =2e-6 # ***
 betas = ((0.9, 0.98)) 
 num_training_steps = int((num_epochs * num_samples)/batch_size) 
-# num_epochs * num_samples = 3234114; 3234114/batch_size = 202134 (Total optimization steps)
-warmup_steps = 20200  # 10% of total training steps
+# warmup_steps = int(num_training_steps*0.1) # before
+warmup_steps = 202132 # now
 
 # LoRA config ####################################################################
 configLora = { "lora_alpha": 1, "lora_dropout": 0.4, "r": 1 }
@@ -145,13 +147,13 @@ training_args = TrainingArguments(
         output_dir                  = path_checkpoints, 
         num_train_epochs            = num_epochs,   
         per_device_train_batch_size = batch_size,   
-        per_device_eval_batch_size  = batch_size * 8,         
+        per_device_eval_batch_size  = batch_size * 32,   # before       batch_size * 8 
         logging_dir                 = path_checkpoints,        
         logging_strategy            = "steps", #epoch or steps
         #eval_steps                  = num_samples/batch_size, # para epochs
         #save_steps                  = num_samples/batch_size, # para epochs
-        eval_steps                  = 10000, # 3000 antes
-        save_steps                  = 10000, # 3000 antes
+        eval_steps                  = 10000, # el primer experimento fue con 1000 steps
+        save_steps                  = 10000,
         metric_for_best_model       = 'f1',
         load_best_model_at_end      = True,        
         evaluation_strategy         = "steps", #epoch or steps
@@ -159,7 +161,7 @@ training_args = TrainingArguments(
         #gradient_accumulation_steps = 64,  # reduce el consumo de memoria
     
         report_to="wandb",
-        logging_steps=3000  # how often to log to W&B
+        logging_steps=10000  # how often to log to W&B
 )
 
 
